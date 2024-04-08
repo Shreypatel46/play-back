@@ -56,7 +56,7 @@ const registerUser = asyncHander( async ( req, res) =>{
 
     })
     //condition to user is created and  by default all r selected and -stirng used for remove 
-     const createdUser = await User.findById(user._id)/Selection(
+     const createdUser = await User.findById(user._id).select(
         "-password -refreshToken"
      )
      if(!createdUser){
