@@ -19,6 +19,6 @@ app.use(cookieParser())
 import userRouter from './routes/user.routes.js'
 
 //  router delcaration and include api and it version standard practice
-app.use("/api/v1/user",userRouter)
+app.use("/api/v1/users",userRouter)
 
 export { app }
