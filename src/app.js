@@ -14,5 +14,11 @@ app.use(express.static("public"))
 app.use(cookieParser())  
 // cookieParser will allow to access browser cookie & perform crud on it
 
+// routes import 
+// (can give import name any if export is default)
+import userRouter from './routes/user.routes.js'
+
+//  router delcaration and include api and it version standard practice
+app.use("/api/v1/user",userRouter)
 
 export { app }
