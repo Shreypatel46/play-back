@@ -19,7 +19,7 @@ const userSchema =new Schema({
         trim: true,
         index: true, 
     },
-    fullname:{
+    fullName:{
         type: String,
         required: true,
         trim: true,
@@ -43,7 +43,7 @@ const userSchema =new Schema({
         required:[true, 'password is required']
     },
     refreshToken:{
-        type: Stirng
+        type: String
     }
 },{
     timestamps: true
