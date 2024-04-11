@@ -170,7 +170,7 @@ const logoutUser = asyncHander(async(req,res)=>{
 const refreshAccessToken =asyncHander(async(req,res)=>{
    const incomingRefreshToken= req.cookies.refreshToken || req.body.refreshToken ||req.header("Authorization")?.replace("Bearer ","")
 
-   if(incomingRefreshToken){
+   if(!incomingRefreshToken){
     throw new ApiError(401, "unauthorized incoming request")
    }
 
@@ -199,7 +199,7 @@ const refreshAccessToken =asyncHander(async(req,res)=>{
      .status(200)
      .cookie("accessToken", accessToken, options)
      .cookie("refreshToken",newrefreshToken,options)
-     .jdon(
+     .json(
          new ApiResponse(
              200,
              {accessToken, refreshToken: newrefreshToken},
@@ -211,9 +211,119 @@ const refreshAccessToken =asyncHander(async(req,res)=>{
    }
 })
 
+const changeCurrentPassword = asyncHander(async(req,res)=>{
+    const  {oldPassword, newPassword} = req.body
+    
+    const user = await User.findById(req.user?._id)
+    const isPasswordCorrect =await user.isPasswordCorrect(oldPassword)
+
+    if(!isPasswordCorrect){
+        throw new ApiError(400,"invalid old password")
+    }
+
+    user.password = newPassword 
+    await user.save({validateBeforeSave: false})
+
+    return res
+    .status(200)
+    .json(new ApiResponse(200, {} ,"password changes succesfully"))
+})
+
+const getCurrentUser = asyncHander(async(req,res)=>{
+    return res
+    .status(200)
+    .json(200, req.user,"current user fetched successfully")
+})
+// file upadate should be different controller
+// text base update
+const upadateAccount = asyncHander(async(req, res)=>{
+    const {fullName,email} = req.body
+
+    if(!fullName || !email){
+        throw new ApiError(400, "All field are required")
+    }
+    // upadated information
+    const user = User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set:{
+                fullName:fullName,
+                email:email
+            }
+        },
+        {new:true}
+    ).select("-password")
+
+    return res
+    .status(200)
+    .json(new ApiResponse(200, user, "Account details updated succesfully"))
+})
+
+const updateUserAvatar =asyncHander(async(req,res)=>{
+    const avatarLocalPath =req.file?.path
+
+    if(!avatarLocalPath){
+        throw new ApiError(400,"Avatar path file missing update")
+    }
+    const avatar = await uploadOnCloudinary(avatarLocalPath)
+
+    if(!avatar.url){
+        throw new ApiError(400,"error while uploading on avatr while update")
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set:{
+                avatar:avatar.url
+            }
+        },
+        {new:true}
+    ).select("-password")
+
+
+    return res
+    .status(200)
+    .json(new ApiResponse(200, user, "avatar Image upadates succefully"))
+})
+
+const updateUserCoverImage =asyncHander(async(req,res)=>{
+    const coverImageLocalPath =req.file?.path
+
+    if(!coverImageLocalPath){
+        throw new ApiError(400,"cover image path file missing update")
+    }
+    const coverImage = await uploadOnCloudinary(coverImageLocalPath)
+
+    if(!coverImage.url){
+        throw new ApiError(400,"error while uploading on cover image while update")
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set:{
+                coverImage: coverImage.url
+            }
+        },
+        {new:true}
+    ).select("-password")
+
+    return res
+    .status(200)
+    .json(new ApiResponse(200, user, "Cover Image upadates succefully"))
+})
+// challenge: one model data pass to another model
+// challenge: sunscriber need user data along with number of subscribe and u are subscribe or not 
+
 export {
     registerUser,
     loginUser,
     logoutUser,
-    refreshAccessToken
+    refreshAccessToken,
+    changeCurrentPassword,
+    getCurrentUser,
+    upadateAccount,
+    updateUserAvatar,
+    updateUserCoverImage
 }
