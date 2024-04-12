@@ -4,6 +4,7 @@ import { User } from "../model/user.model.js"
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import jwt from "jsonwebtoken"
+import { subscribe } from "diagnostics_channel";
 
 // not accesing webrequest , it is internal method so use just async
 const generateAccessAndRefreshTokens =async(userId)=>{
@@ -232,7 +233,7 @@ const changeCurrentPassword = asyncHander(async(req,res)=>{
 const getCurrentUser = asyncHander(async(req,res)=>{
     return res
     .status(200)
-    .json(200, req.user,"current user fetched successfully")
+    .json(new ApiResponse(200, req.user,"current user fetched successfully"))
 })
 // file upadate should be different controller
 // text base update
@@ -243,7 +244,7 @@ const upadateAccount = asyncHander(async(req, res)=>{
         throw new ApiError(400, "All field are required")
     }
     // upadated information
-    const user = User.findByIdAndUpdate(
+    const user =await  User.findByIdAndUpdate(
         req.user?._id,
         {
             $set:{
@@ -281,6 +282,7 @@ const updateUserAvatar =asyncHander(async(req,res)=>{
         {new:true}
     ).select("-password")
 
+    // todo delete old avatar : utilite function
 
     return res
     .status(200)
@@ -316,6 +318,84 @@ const updateUserCoverImage =asyncHander(async(req,res)=>{
 // challenge: one model data pass to another model
 // challenge: sunscriber need user data along with number of subscribe and u are subscribe or not 
 
+
+const getUserChannelProfile = asyncHander(async(req,res)=>{
+
+    const {username} =req.params
+    if(!username?.trim()){
+        throw new ApiError(400,"username is missing in channel profile")
+    }
+
+    const channel =await User.aggregate([
+        {
+            $match:{
+                // way to find match it will match username with username
+                username:username?.toLowerCase()
+            }
+        },
+        {
+            $lookup:{
+                // channel subscriber we get here
+                // in model word are in lower case and plural
+                from: "subscriptions",
+                localField:"_id",
+                foreignField:"channel",
+                as : "subscribers"
+            }
+        },
+        {
+            $lookup:{
+                //  my channel to who i hv subscribe we get here
+                // in model word are in lower case and plural
+                from: "subscriptions",
+                localField:"_id",
+                foreignField:"subscriber",
+                as : "subscribeTo"
+            }
+        },
+        {
+            $addFields:{
+                subscribersCount:{
+                    $size: "$subscribers"
+                },
+                channelsSubscribedToCount:{
+                    $size:"$subscribeTo"
+                },
+                isSubscribed:{
+                    $cond:{
+                       if:{$in: [req.user?._id,"$subscribers.subscriber"]},
+                       then: true,
+                       else: false
+                       
+                    }
+                }
+            }
+        },
+        {
+            $project:{
+                fullName:1,
+                username:1,
+                subscribersCount:1,
+                channelsSubscribedToCount:1,
+                isSubscribed:1,
+                avatar:1,
+                coverImage:1,
+                email:1,
+
+            }
+        }
+
+    ])
+
+    if(!channel?.length){
+        throw new ApiError(404,"channel does not exist")
+    }
+
+    return res
+    .status(200)
+    .json(new ApiResponse(200,channel[0],"user channel fetched successfully"))
+
+})
 export {
     registerUser,
     loginUser,
@@ -325,5 +405,6 @@ export {
     getCurrentUser,
     upadateAccount,
     updateUserAvatar,
-    updateUserCoverImage
+    updateUserCoverImage,
+    getUserChannelProfile
 }
